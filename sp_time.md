@@ -47,4 +47,21 @@
 - Erstellung PlatformIO Projekt
 - Import von vorhandenen Dateien zu LCD-Display und Servo
 - Erstellung Konzept State_Machine.png
-- Erstellung state_machine.h 
+- Erstellung state_machine.h
+
+---
+
+## 31.03.25, Montag
+
+### MCR
+
+- 3 Stunden
+- Aktualisierung der State Machine: Besprechung gewünschtes Verhalten, wenn Kennzeichen nicht erkannt werden kann. Ergebnis: Kennzeichen soll in maximal 3 Versuchen erkannt werden, falls nicht möglich, soll über einen Error wieder in den Zustand IDLE gewechselt werden
+- Erstellung state_machine.cpp mit Switch Case -> Logik muss noch implementiert werden
+- Recherche für Verwedung der richtigen GPIO-Pins für Servo und LCD-Display
+- Fortsetzung Einarbeitung Mosquitto Broker mit ersten Tests, ob Mosquitto lokal funktioniert
+
+Next Steps:
+
+- Mosquitto vollständig konfigurieren
+- Einarbeitung Kamera-Modul

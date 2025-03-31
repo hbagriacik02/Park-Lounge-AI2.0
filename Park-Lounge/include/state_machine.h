@@ -29,8 +29,11 @@ typedef enum
     DONE               // Übergang zurück zu IDLE
 } Transition;
 
+// Aktueller Zustand
+extern ParkhausState currentState;
+
 // *** Funktionsprototypen für die Zustandsmaschine ***
-void state_machine(Transition event); // Zustandswechsel auslösen
-ParkhausState getCurrentState();      // Aktuellen Zustand abrufen
+void stateMachine(Transition event); // Zustandswechsel auslösen
+ParkhausState getCurrentState();     // Aktuellen Zustand abrufen
 
 #endif
