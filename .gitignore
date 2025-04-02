@@ -1,5 +1,9 @@
 *.code-workspace
 .vscode/
 
-# Globale PlatformIO-Ordner (falls nötig)
-.pio/
+
+controller/.pio/
+controller/.vscode/.browse.c_cpp.db*
+controller/.vscode/c_cpp_properties.json
+controller/.vscode/launch.json
+controller/.vscode/ipch
