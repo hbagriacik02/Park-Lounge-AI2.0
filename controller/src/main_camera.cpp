@@ -1,6 +1,7 @@
+// Erstmal nicht mehr nötig
 #include <WiFi.h>
 #include <PubSubClient.h>
-#include "esp_camera.h"
+#include <esp_camera.h>
 
 // ---- PIN DEFINITIONEN ----
 #define IR_SENSOR_PIN 27
