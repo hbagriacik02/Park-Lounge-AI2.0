@@ -75,6 +75,14 @@ Next Steps:
 - 1,5 Stunden
 - Recherche zu Infrarot-Sensor für Objekterkennung
 - Erstellung ir_sensor.h und ir_sensor.cpp
-- Einarbeitung Kamera-Modul, Entscheidung für zusätzliche Umgebung für die ESP32-Cam, noch unklar wie genau die beiden ESPs miteinander kommunizieren werden
+- Einarbeitung Kamera-Modul, Problemstellung: Arbeiten mit nur einem ESP nicht mehr möglich, da nicht genug Pins vorhanden sind; Entscheidung für zusätzliche Umgebung für die ESP32-Cam, noch unklar wie genau die beiden ESPs miteinander kommunizieren werden
 
 ---
+
+## 09.04.25, Mittwoch
+
+### MCR
+
+- 2 Stunden
+- Versuch, zwei ESPs mit zwei Environments und zwei main.cpps in einem PlatformIO Projekt zu verwalten.
+- Gespräch mit Hr. Malassa: Konzentration vorerst auf Haupt-Controller, mit Funktionalität Button, LEDs, Servo, Display und Infrarot Sensor. Wenn ESP-Cam mit eingebunden wird, soll ein separates PlatformIO Projekt erstellt werden.
