@@ -65,3 +65,16 @@ Next Steps:
 
 - Mosquitto vollständig konfigurieren
 - Einarbeitung Kamera-Modul
+
+---
+
+## 08.04.25, Dienstag
+
+### MCR
+
+- 1,5 Stunden
+- Recherche zu Infrarot-Sensor für Objekterkennung
+- Erstellung ir_sensor.h und ir_sensor.cpp
+- Einarbeitung Kamera-Modul, Entscheidung für zusätzliche Umgebung für die ESP32-Cam, noch unklar wie genau die beiden ESPs miteinander kommunizieren werden
+
+---
