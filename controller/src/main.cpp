@@ -327,7 +327,20 @@ void stateMachine(Transition &event)
                 event = MQTT_TIMEOUT;
             }
 
-            if (millis() - stateEntryTime >= SCAN_TIMEOUT * scanningAttempts && scanningAttempts < 3)
+            if (scanningAttempts == 3 && millis() - stateEntryTime >= SCAN_TIMEOUT * 3)
+            {
+                Serial.println("Dritter Scan-Versuch fehlgeschlagen (Timeout)");
+                sendMQTTMessage("failed", usedParkingSpaces);
+                newState = STATE_ERROR;
+                Serial.println("DEBUG: Executing STATE_SCANNING to STATE_ERROR actions");
+                updateLEDs();
+                Serial.println("DEBUG: Before lcd.print in STATE_ERROR");
+                String line1 = "Kein Kennzeichen"; // Auf zwei Zeilen aufteilen
+                String line2 = "erkannt        ";
+                lcd.printTwoLines(line1, line2);
+                Serial.println("LCD: Kein Kennzeichen erkannt");
+            }
+            else if (millis() - stateEntryTime >= SCAN_TIMEOUT * scanningAttempts && scanningAttempts < 3)
             {
                 sendMQTTMessage("failed", usedParkingSpaces);
                 scanningAttempts++;
@@ -353,9 +366,9 @@ void stateMachine(Transition &event)
             Serial.println("DEBUG: Executing STATE_SCANNING to STATE_ERROR actions");
             updateLEDs();
             Serial.println("DEBUG: Before lcd.print in STATE_ERROR");
-            lcd.clear();
-            lcd.setCursor(0, 0);
-            lcd.print("Kein Kennzeichen erkannt");
+            String line1 = "Kein Kennzeichen"; // Auf zwei Zeilen aufteilen
+            String line2 = "erkannt        ";
+            lcd.printTwoLines(line1, line2);
             Serial.println("LCD: Kein Kennzeichen erkannt");
             event = NO_EVENT;
         }
@@ -380,17 +393,23 @@ void stateMachine(Transition &event)
             updateLEDs();
             sendMQTTMessage("success", usedParkingSpaces, true, lastPlate.c_str(), false);
             Serial.println("DEBUG: Before lcd.print in STATE_DENIED");
-            lcd.clear();
-            lcd.setCursor(0, 0);
-            lcd.print("Einfahrt nicht gestattet");
+            String line1 = "Einfahrt nicht ";
+            String line2 = "gestattet     ";
+            lcd.printTwoLines(line1, line2);
             Serial.println("LCD: Einfahrt nicht gestattet");
             event = NO_EVENT;
         }
         else if (event == MQTT_TIMEOUT)
         {
-            newState = STATE_IDLE;
-            Serial.println("DEBUG: Executing STATE_SCANNING to STATE_IDLE actions");
+            newState = STATE_ERROR;
+            Serial.println("DEBUG: Executing STATE_SCANNING to STATE_ERROR actions (MQTT_TIMEOUT)");
+            sendMQTTMessage("failed", usedParkingSpaces);
             updateLEDs();
+            Serial.println("DEBUG: Before lcd.print in STATE_ERROR");
+            String line1 = "Kein Kennzeichen"; // Auf zwei Zeilen aufteilen
+            String line2 = "erkannt        ";
+            lcd.printTwoLines(line1, line2);
+            Serial.println("LCD: Kein Kennzeichen erkannt");
             event = NO_EVENT;
         }
     }
@@ -431,6 +450,14 @@ void stateMachine(Transition &event)
     else if (currentState == STATE_ERROR)
     {
         Serial.println("DEBUG: Inside STATE_ERROR");
+        if (stateChanged)
+        {
+            Serial.println("DEBUG: Executing STATE_ERROR actions");
+            String line1 = "Kein Kennzeichen"; // Auf zwei Zeilen aufteilen
+            String line2 = "erkannt        ";
+            lcd.printTwoLines(line1, line2);
+            Serial.println("LCD: Kein Kennzeichen erkannt");
+        }
         if (millis() - stateEntryTime >= WAIT_TIME)
         {
             Serial.println("Timeout: Transition to STATE_IDLE");
@@ -560,7 +587,7 @@ void setup()
     Serial.println("\nWiFi verbunden");
     Serial.println(WiFi.localIP());
 
-    configTime(3600, 0, "pool.ntp.org");
+    configTime(7200, 0, "pool.ntp.org"); // 7200 Sekunden = 2 Stunden Offset für Sommerzeit
     Serial.println("Warte auf NTP-Synchronisation...");
     delay(5000);
 
