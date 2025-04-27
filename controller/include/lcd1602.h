@@ -16,6 +16,7 @@ public:
     void clear();
     void setCursor(int x, int y);
     void print(String message);
+    void printTwoLines(String line1, String line2); // Neue Methode für zweizeilige Ausgabe
     void displayDefaultMessage();
 };
 

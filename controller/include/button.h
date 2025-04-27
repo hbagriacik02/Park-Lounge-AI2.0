@@ -12,6 +12,9 @@ public:
 
 private:
     int _pin;
+    bool _lastButtonState;
+    bool _lastStableState; // Stabiler Zustand des Buttons
+    unsigned long _lastDebounceTime;
 };
 
 #endif

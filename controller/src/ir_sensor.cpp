@@ -12,5 +12,5 @@ void IRSensor::begin()
 
 bool IRSensor::isObjectDetected()
 {
-    return digitalRead(_pin) == LOW; // Annahme: LOW = Objekt erkannt
+    return digitalRead(_pin) == LOW; // LOW = Objekt erkannt
 }
