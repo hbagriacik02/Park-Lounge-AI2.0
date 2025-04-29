@@ -7,9 +7,9 @@
 class ServoControl
 {
 public:
-    ServoControl(int servoPin); // Nur ein Parameter für den Servo-Pin
+    ServoControl(int servoPin);
     void begin();
-    void setPosition(int pos); // Methode zum Setzen der Servo-Position
+    void setPosition(int pos);
 
 private:
     int _servoPin;

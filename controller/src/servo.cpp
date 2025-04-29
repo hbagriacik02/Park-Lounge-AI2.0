@@ -5,12 +5,12 @@ ServoControl::ServoControl(int servoPin)
 
 void ServoControl::begin()
 {
-    _myServo.attach(_servoPin); // Servo wird an den angegebenen Pin angeschlossen
-    _myServo.write(_pos);       // Startet mit Position 0° (verriegelt)
+    _myServo.attach(_servoPin);
+    _myServo.write(_pos);
 }
 
 void ServoControl::setPosition(int pos)
 {
     _pos = pos;
-    _myServo.write(_pos); // Bewegt den Servo auf die angegebene Position
+    _myServo.write(_pos);
 }

@@ -6,9 +6,9 @@
 class IRSensor
 {
 public:
-    IRSensor(int pin);       // Konstruktor mit Pin
-    void begin();            // Pin als Eingang konfigurieren
-    bool isObjectDetected(); // Gibt true zurück, wenn Objekt erkannt
+    IRSensor(int pin);
+    void begin();
+    bool isObjectDetected();
 
 private:
     int _pin;

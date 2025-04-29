@@ -185,6 +185,34 @@ Next Steps:
 Next Steps:
 
 - Testen gesamtes Parkhaus
-- Anpassen der JSON-Strings für die MQTT Nachrichten, damit KI damit arbeiten kann
+- Anpassen der JSON-Strings am Montag für die MQTT Nachrichten, damit KI damit arbeiten kann
 - WLAN Anpassungen nochmal recherchieren und versuchen
 - Parkhaus Modell bauen
+
+## 27.04.25, Sonntag
+
+### MCR
+
+- 2 Stunden
+- Anpassung State Machine: MQTT Timeout im State SCANNING läuft jetzt auch zuerst in den State ERROR, bevor wieder zu IDLE gewechselt wird
+- Überarbeitung State Machine Diagramm, Anpassung an aktuellen Code
+- Hinzufügung von Build-Flags in platformio.ini für WLAN- und MQTT-Zugangsdaten - nicht funktionsfähig
+
+## 28.04.25, Montag
+
+### MCR
+
+- 3 Stunden
+- Fertigstellung Auslagerung der WLAN- und MQTT-Zugangsdaten
+  Lösung: Build-Flags nicht nur in Anführungszeichen setzen, sonder auch richtig escapen (\"WLAN-SSID\")
+- Gemeinsame Überarbeitung der MQTT-Topics und -Nachrichten, das der ESP korrekt mit der KI kommunizieren kann
+- Umsetzung der MQTT-Anpassungen im MCR-Code
+- Testen gesamtes Parkhaus zusätzlich zur MQTT-Kommunikation
+
+## 29.04.25
+
+### MCR
+
+- 4 Stunden
+- Aufbau Parkhaus-Modell
+- Testen gesamtes Projekt im Modell

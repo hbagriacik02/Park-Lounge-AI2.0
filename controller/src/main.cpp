@@ -18,15 +18,25 @@
 // Button: Pin 26
 
 // Wi-Fi und MQTT Zugangsdaten
-const char *mqtt_server = "192.168.2.173";
+#ifndef MQTT_BROKER_IP
+#error "MQTT_BROKER_IP must be defined in platformio.ini"
+#endif
+#ifndef MQTT_BROKER_USER
+#error "MQTT_BROKER_USER must be defined in platformio.ini"
+#endif
+#ifndef MQTT_BROKER_PASSWORD
+#error "MQTT_BROKER_PASSWORD must be defined in platformio.ini"
+#endif
+const char *mqtt_server = MQTT_BROKER_IP;
 const int mqtt_port = 1883;
-const char *mqtt_user = "client";
-const char *mqtt_password = "123456";
+const char *mqtt_user = MQTT_BROKER_USER;
+const char *mqtt_password = MQTT_BROKER_PASSWORD;
 
 // MQTT Themen
 const char *MQTT_TOPIC_TRIGGER = "parkhaus/camera/trigger";
 const char *MQTT_TOPIC_RESPONSE = "parkhaus/camera/response";
 const char *MQTT_TOPIC_STATUS = "parkhaus/status";
+const char *MQTT_TOPIC_SETUP = "parkhaus/setup";
 
 // MQTT Client
 WiFiClient espClient;
@@ -92,6 +102,10 @@ String lastPlate = "";
 // Flag, um IR-Sensor-Erkennung zu steuern
 bool irDetectionEnabled = true;
 
+// Zeitstempel für den letzten Reconnect-Versuch
+unsigned long lastWiFiReconnectAttempt = 0;
+const unsigned long WIFI_RECONNECT_INTERVAL = 5000; // 5 Sekunden zwischen Reconnect-Versuchen
+
 // Funktion zur Anzeige der Uhrzeit mit NTP über ESP32
 void updateTimeDisplay()
 {
@@ -132,29 +146,37 @@ void updateLEDs()
 }
 
 // MQTT Nachricht senden
-void sendMQTTMessage(const char *status, int occupiedSpaces, bool includePlate = false, const char *plate = nullptr, bool approved = false)
+void sendMQTTMessage(const char *status, int occupiedSpaces, const char *topic, bool includePlate = false, const char *plate = nullptr, bool approved = false)
 {
     Serial.println("DEBUG: Inside sendMQTTMessage");
     StaticJsonDocument<200> doc;
-    doc["status"] = status;
-    if (includePlate)
+
+    // Für Nachrichten mit "status" (z. B. "full", "failed", "test_setup")
+    if (status != nullptr)
     {
-        doc["plate"] = plate ? plate : "";
-        doc["approved"] = approved;
+        doc["status"] = status;
+        if (strcmp(status, "space_freed") == 0)
+        {
+            doc["remaining_spaces"] = occupiedSpaces;
+        }
+        else
+        {
+            doc["blocked_space"] = occupiedSpaces;
+        }
     }
-    if (strcmp(status, "space_freed") == 0)
-    {
-        doc["remaining_spaces"] = occupiedSpaces;
-    }
+    // Für Rückmeldungen nach KI-Antwort (PLATE_APPROVED, PLATE_DENIED)
     else
     {
-        doc["occupied_spaces"] = occupiedSpaces;
+        doc["free_space"] = MAX_PARKING_SPACES - occupiedSpaces;
+        doc["blocked_space"] = occupiedSpaces;
     }
 
     char jsonBuffer[256];
     serializeJson(doc, jsonBuffer);
-    client.publish(MQTT_TOPIC_STATUS, jsonBuffer);
-    Serial.print("MQTT Nachricht gesendet: ");
+    client.publish(topic, jsonBuffer);
+    Serial.print("MQTT Nachricht gesendet an Topic ");
+    Serial.print(topic);
+    Serial.print(": ");
     Serial.println(jsonBuffer);
     Serial.println("DEBUG: Exiting sendMQTTMessage");
 }
@@ -228,6 +250,13 @@ void reconnect()
 {
     while (!client.connected())
     {
+        // Stelle sicher, dass WiFi verbunden ist, bevor MQTT versucht wird
+        if (WiFi.status() != WL_CONNECTED)
+        {
+            Serial.println("Kann MQTT nicht verbinden: WiFi nicht verbunden!");
+            return;
+        }
+
         Serial.print("Verbinde mit MQTT Broker...");
         String clientId = "ESP32Client-";
         clientId += String(random(0xffff), HEX);
@@ -292,7 +321,7 @@ void stateMachine(Transition &event)
                 lcd.setCursor(0, 0);
                 lcd.print("Parkhaus voll");
                 Serial.println("LCD: Parkhaus voll");
-                sendMQTTMessage("full", usedParkingSpaces);
+                sendMQTTMessage("full", usedParkingSpaces, MQTT_TOPIC_STATUS);
                 scanningAttempts = 0;
                 newState = STATE_FULL;
                 Serial.println("Transition: Parkhaus voll -> STATE_FULL");
@@ -301,13 +330,15 @@ void stateMachine(Transition &event)
             {
                 scanningAttempts++;
                 Serial.println("DEBUG: Before lcd.print in STATE_SCANNING (Scanning...)");
-                String line1 = "Scanning...    ";                           // 16 Zeichen
-                String line2 = String(scanningAttempts) + " mal          "; // 16 Zeichen
+                String line1 = "Scanning...    ";
+                String line2 = String(scanningAttempts) + " mal          ";
                 lcd.printTwoLines(line1, line2);
                 Serial.println("LCD: Scanning... | " + String(scanningAttempts) + " mal");
 
                 StaticJsonDocument<200> doc;
-                doc["command"] = "scan";
+                doc["command"] = "scanme";
+                doc["free_space"] = MAX_PARKING_SPACES - usedParkingSpaces;
+                doc["blocked_space"] = usedParkingSpaces;
                 char jsonBuffer[256];
                 serializeJson(doc, jsonBuffer);
                 client.publish(MQTT_TOPIC_TRIGGER, jsonBuffer);
@@ -330,19 +361,19 @@ void stateMachine(Transition &event)
             if (scanningAttempts == 3 && millis() - stateEntryTime >= SCAN_TIMEOUT * 3)
             {
                 Serial.println("Dritter Scan-Versuch fehlgeschlagen (Timeout)");
-                sendMQTTMessage("failed", usedParkingSpaces);
+                sendMQTTMessage("failed", usedParkingSpaces, MQTT_TOPIC_STATUS);
                 newState = STATE_ERROR;
                 Serial.println("DEBUG: Executing STATE_SCANNING to STATE_ERROR actions");
                 updateLEDs();
                 Serial.println("DEBUG: Before lcd.print in STATE_ERROR");
-                String line1 = "Kein Kennzeichen"; // Auf zwei Zeilen aufteilen
+                String line1 = "Kein Kennzeichen";
                 String line2 = "erkannt        ";
                 lcd.printTwoLines(line1, line2);
                 Serial.println("LCD: Kein Kennzeichen erkannt");
             }
             else if (millis() - stateEntryTime >= SCAN_TIMEOUT * scanningAttempts && scanningAttempts < 3)
             {
-                sendMQTTMessage("failed", usedParkingSpaces);
+                sendMQTTMessage("failed", usedParkingSpaces, MQTT_TOPIC_STATUS);
                 scanningAttempts++;
                 Serial.println("DEBUG: Before lcd.print in STATE_SCANNING (retry)");
                 String line1 = "Scanning...    ";
@@ -351,7 +382,9 @@ void stateMachine(Transition &event)
                 Serial.println("LCD: Scanning... | " + String(scanningAttempts) + " mal");
 
                 StaticJsonDocument<200> doc;
-                doc["command"] = "scan";
+                doc["command"] = "scanme";
+                doc["free_space"] = MAX_PARKING_SPACES - usedParkingSpaces;
+                doc["blocked_space"] = usedParkingSpaces;
                 char jsonBuffer[256];
                 serializeJson(doc, jsonBuffer);
                 client.publish(MQTT_TOPIC_TRIGGER, jsonBuffer);
@@ -361,12 +394,12 @@ void stateMachine(Transition &event)
 
         if (event == SCAN_FAILED && scanningAttempts >= 3)
         {
-            sendMQTTMessage("failed", usedParkingSpaces);
+            sendMQTTMessage("failed", usedParkingSpaces, MQTT_TOPIC_STATUS);
             newState = STATE_ERROR;
             Serial.println("DEBUG: Executing STATE_SCANNING to STATE_ERROR actions");
             updateLEDs();
             Serial.println("DEBUG: Before lcd.print in STATE_ERROR");
-            String line1 = "Kein Kennzeichen"; // Auf zwei Zeilen aufteilen
+            String line1 = "Kein Kennzeichen";
             String line2 = "erkannt        ";
             lcd.printTwoLines(line1, line2);
             Serial.println("LCD: Kein Kennzeichen erkannt");
@@ -378,7 +411,7 @@ void stateMachine(Transition &event)
             Serial.println("DEBUG: Executing STATE_SCANNING to STATE_APPROVED actions");
             updateLEDs();
             usedParkingSpaces++;
-            sendMQTTMessage("success", usedParkingSpaces, true, lastPlate.c_str(), true);
+            sendMQTTMessage(nullptr, usedParkingSpaces, MQTT_TOPIC_STATUS);
             Serial.println("DEBUG: Before lcd.print in STATE_APPROVED");
             lcd.clear();
             lcd.setCursor(0, 0);
@@ -391,7 +424,7 @@ void stateMachine(Transition &event)
             newState = STATE_DENIED;
             Serial.println("DEBUG: Executing STATE_SCANNING to STATE_DENIED actions");
             updateLEDs();
-            sendMQTTMessage("success", usedParkingSpaces, true, lastPlate.c_str(), false);
+            sendMQTTMessage(nullptr, usedParkingSpaces, MQTT_TOPIC_STATUS);
             Serial.println("DEBUG: Before lcd.print in STATE_DENIED");
             String line1 = "Einfahrt nicht ";
             String line2 = "gestattet     ";
@@ -403,10 +436,10 @@ void stateMachine(Transition &event)
         {
             newState = STATE_ERROR;
             Serial.println("DEBUG: Executing STATE_SCANNING to STATE_ERROR actions (MQTT_TIMEOUT)");
-            sendMQTTMessage("failed", usedParkingSpaces);
+            sendMQTTMessage("failed", usedParkingSpaces, MQTT_TOPIC_STATUS);
             updateLEDs();
             Serial.println("DEBUG: Before lcd.print in STATE_ERROR");
-            String line1 = "Kein Kennzeichen"; // Auf zwei Zeilen aufteilen
+            String line1 = "Kein Kennzeichen";
             String line2 = "erkannt        ";
             lcd.printTwoLines(line1, line2);
             Serial.println("LCD: Kein Kennzeichen erkannt");
@@ -421,8 +454,8 @@ void stateMachine(Transition &event)
             Serial.println("DEBUG: Executing STATE_APPROVED actions");
             servo.setPosition(90);
             Serial.println("Servo: Position 90 (STATE_APPROVED)");
-            String line1 = "Willkommen     ";        // 16 Zeichen
-            String line2 = lastPlate + "          "; // 16 Zeichen
+            String line1 = "Willkommen     ";
+            String line2 = lastPlate + "          ";
             lcd.printTwoLines(line1, line2);
             Serial.println("LCD: Willkommen | " + lastPlate);
         }
@@ -453,7 +486,7 @@ void stateMachine(Transition &event)
         if (stateChanged)
         {
             Serial.println("DEBUG: Executing STATE_ERROR actions");
-            String line1 = "Kein Kennzeichen"; // Auf zwei Zeilen aufteilen
+            String line1 = "Kein Kennzeichen";
             String line2 = "erkannt        ";
             lcd.printTwoLines(line1, line2);
             Serial.println("LCD: Kein Kennzeichen erkannt");
@@ -482,7 +515,7 @@ void stateMachine(Transition &event)
             Serial.println("DEBUG: Before updateLEDs");
             updateLEDs();
             Serial.println("DEBUG: Before sendMQTTMessage");
-            sendMQTTMessage("space_freed", usedParkingSpaces);
+            sendMQTTMessage("space_freed", usedParkingSpaces, MQTT_TOPIC_STATUS);
             Serial.println("DEBUG: Before servo.setPosition");
             servo.setPosition(90);
             Serial.println("Servo: Position 90 (STATE_MANUAL_OPEN)");
@@ -578,6 +611,14 @@ void setup()
     Serial.begin(115200);
     Serial.println("Setup beginnt...");
 
+    // Debugging: Werte von WIFI_SSID und WIFI_PASSWORD ausgeben
+    Serial.print("WIFI_SSID: '");
+    Serial.print(WIFI_SSID);
+    Serial.println("'");
+    Serial.print("WIFI_PASSWORD: '");
+    Serial.print(WIFI_PASSWORD);
+    Serial.println("'");
+
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     while (WiFi.status() != WL_CONNECTED)
     {
@@ -605,7 +646,7 @@ void setup()
     client.setCallback(callback);
     reconnect();
     Serial.println("DEBUG: Testing MQTT in setup");
-    sendMQTTMessage("test_setup", 0);
+    sendMQTTMessage("test_setup", 0, MQTT_TOPIC_SETUP);
     delay(1000);
 
     lcd.setupLCD();
@@ -638,22 +679,30 @@ void setup()
 
 void loop()
 {
-    if (!client.connected())
-    {
-        reconnect();
-    }
-    client.loop();
-
+    // Prüfen, ob WiFi verbunden ist, und versuchen, wieder zu verbinden
     if (WiFi.status() != WL_CONNECTED)
     {
-        Serial.println("WiFi nicht verbunden!");
+        Serial.println("WiFi nicht verbunden! Versuche Reconnect...");
+        // Versuche nur alle WIFI_RECONNECT_INTERVAL Millisekunden einen Reconnect
+        if (millis() - lastWiFiReconnectAttempt >= WIFI_RECONNECT_INTERVAL)
+        {
+            lastWiFiReconnectAttempt = millis();
+            WiFi.reconnect();
+            Serial.println("WiFi Reconnect ausgeführt");
+        }
+    }
+    else
+    {
+        // WiFi ist verbunden, prüfe MQTT-Verbindung
+        if (!client.connected())
+        {
+            reconnect();
+        }
+        client.loop();
     }
 
     Transition event = NO_EVENT;
 
-    int buttonState = digitalRead(26);
-    Serial.print("Button Pin State: ");
-    Serial.println(buttonState);
     if (button.isPressed())
     {
         Serial.println("Button pressed!");

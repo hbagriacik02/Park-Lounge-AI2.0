@@ -9,7 +9,7 @@ void Button::begin()
 
 bool Button::isPressed()
 {
-    const unsigned long DEBOUNCE_DELAY = 50; // Debounce-Zeit in Millisekunden
+    const unsigned long DEBOUNCE_DELAY = 50;
     bool reading = digitalRead(_pin);
 
     // Prüfe, ob sich der Zustand geändert hat
@@ -18,7 +18,7 @@ bool Button::isPressed()
         _lastDebounceTime = millis();
     }
 
-    // Warte auf das Ende des Prellens
+    // Warten auf Ende des Debounce
     if ((millis() - _lastDebounceTime) > DEBOUNCE_DELAY)
     {
         // Wenn sich der stabile Zustand geändert hat

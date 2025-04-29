@@ -3,7 +3,7 @@
 
 lcd1602::lcd1602()
 {
-    lcd = new LiquidCrystal_I2C(0x27, 16, 2); // I2C-Adresse 0x27, 16x2 Display
+    lcd = new LiquidCrystal_I2C(0x27, 16, 2);
 }
 
 void lcd1602::clear()
@@ -18,7 +18,7 @@ void lcd1602::setCursor(int x, int y)
 
 void lcd1602::print(String message)
 {
-    lcd->print(message); // Kein clear() und setCursor(), nur direkte Ausgabe
+    lcd->print(message);
 }
 
 void lcd1602::printTwoLines(String line1, String line2)
@@ -32,7 +32,7 @@ void lcd1602::printTwoLines(String line1, String line2)
 
 void lcd1602::setupLCD()
 {
-    Wire.begin(21, 22); // SDA = Pin 21, SCL = Pin 22 (ESP32 Standard)
+    Wire.begin(21, 22); // SDA = Pin 21, SCL = Pin 22
     lcd->init();
     lcd->backlight();
     lcd->clear();
