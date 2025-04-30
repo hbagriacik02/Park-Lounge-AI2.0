@@ -207,6 +207,7 @@ Next Steps:
   Lösung: Build-Flags nicht nur in Anführungszeichen setzen, sonder auch richtig escapen (\"WLAN-SSID\")
 - Gemeinsame Überarbeitung der MQTT-Topics und -Nachrichten, das der ESP korrekt mit der KI kommunizieren kann
 - Umsetzung der MQTT-Anpassungen im MCR-Code
+- Lötarbeiten
 - Testen gesamtes Parkhaus zusätzlich zur MQTT-Kommunikation
 
 ## 29.04.25
