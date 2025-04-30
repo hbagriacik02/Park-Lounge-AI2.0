@@ -8,4 +8,3 @@ controller/.vscode/c_cpp_properties.json
 controller/.vscode/launch.json
 controller/.vscode/ipch
 controller/.gitignore
-controller/platformio.ini
